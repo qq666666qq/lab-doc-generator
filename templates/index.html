@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实验步骤文档生成器</title>
+    <link rel="stylesheet" href="/static/terminal.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🔬 实验步骤文档生成器</h1>
+        <p class="subtitle">上传实验步骤 → AI 生成终端模拟 → 输出 Word 文档</p>
+
+        <form id="uploadForm" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="file">📄 实验步骤文件（txt/md）</label>
+                <input type="file" id="file" name="file" accept=".txt,.md" required>
+                <div class="hint">支持 .txt 和 .md 格式</div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="user">👤 用户名</label>
+                    <input type="text" id="user" name="user" value="root" placeholder="root">
+                </div>
+                <div class="form-group">
+                    <label for="host">🖥️ 主机名</label>
+                    <input type="text" id="host" name="host" value="docker-host" placeholder="server">
+                </div>
+            </div>
+
+            <div class="preview-group">
+                <label>终端预览</label>
+                <div class="terminal-preview">
+                    <span class="prompt" id="promptPreview">root@docker-host:~$</span>
+                </div>
+            </div>
+
+            <button type="submit" id="submitBtn">🚀 生成文档</button>
+        </form>
+
+        <div id="result" class="result hidden">
+            <div class="result-info">
+                <span id="resultMsg"></span>
+            </div>
+            <a id="downloadBtn" class="download-btn hidden" href="#">📥 下载 Word 文档</a>
+        </div>
+
+        <div id="loading" class="loading hidden">
+            <div class="spinner"></div>
+            <p>正在生成中，请稍候...</p>
+            <p class="hint">AI 正在模拟终端输出并生成截图，可能需要 1-2 分钟</p>
+        </div>
+
+        <div id="error" class="error hidden"></div>
+    </div>
+
+    <script>
+        // 实时更新终端预览
+        const userInput = document.getElementById('user');
+        const hostInput = document.getElementById('host');
+        const promptPreview = document.getElementById('promptPreview');
+
+        function updatePreview() {
+            const user = userInput.value || 'root';
+            const host = hostInput.value || 'server';
+            promptPreview.textContent = `${user}@${host}:~$`;
+        }
+        userInput.addEventListener('input', updatePreview);
+        hostInput.addEventListener('input', updatePreview);
+
+        // 表单提交
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const submitBtn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const error = document.getElementById('error');
+
+            // UI 状态
+            submitBtn.disabled = true;
+            loading.classList.remove('hidden');
+            result.classList.add('hidden');
+            error.classList.add('hidden');
+
+            try {
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    result.classList.remove('hidden');
+                    document.getElementById('resultMsg').textContent =
+                        `✅ 生成完成！共处理 ${data.steps_count} 个步骤`;
+
+                    const downloadBtn = document.getElementById('downloadBtn');
+                    downloadBtn.href = data.download_url;
+                    downloadBtn.classList.remove('hidden');
+                } else {
+                    error.classList.remove('hidden');
+                    error.textContent = `❌ ${data.error}`;
+                }
+            } catch (err) {
+                error.classList.remove('hidden');
+                error.textContent = `❌ 请求失败: ${err.message}`;
+            } finally {
+                submitBtn.disabled = false;
+                loading.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
