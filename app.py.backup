@@ -1,0 +1,208 @@
+"""
+实验步骤文档生成器 - Flask 主应用
+"""
+import os
+import uuid
+from flask import Flask, request, render_template, send_file, jsonify
+from step_parser import parse_steps
+from md_parser import parse_md_steps
+from deepseek_client import simulate_output
+from screenshot import render_screenshot
+from docx_builder import build_docx
+
+app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB
+
+# 输出目录
+OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "output")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+
+@app.route("/")
+def index():
+    """上传页面"""
+    return render_template("index.html")
+
+
+@app.route("/generate", methods=["POST"])
+def generate():
+    """接收文件+参数，生成文档"""
+    try:
+        # 获取参数
+        user = request.form.get("user", "root").strip() or "root"
+        host = request.form.get("host", "server").strip() or "server"
+
+        # 获取上传的文件
+        if "file" not in request.files:
+            return jsonify({"error": "请上传文件"}), 400
+
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"error": "未选择文件"}), 400
+
+        # 读取文件内容
+        content = file.read().decode("utf-8", errors="replace")
+
+        # 解析步骤
+        steps = parse_steps(content)
+        if not steps:
+            return jsonify({"error": "未解析到有效步骤，请检查文件格式"}), 400
+
+        # 创建本次任务目录
+        task_id = uuid.uuid4().hex[:8]
+        task_dir = os.path.join(OUTPUT_DIR, task_id)
+        os.makedirs(task_dir, exist_ok=True)
+
+        # 逐条调用 DeepSeek + 截图
+        screenshots = []
+        results = []
+
+        for i, step in enumerate(steps):
+            command = step["command"]
+
+            # 调用 DeepSeek 生成模拟输出
+            try:
+                output = simulate_output(command)
+            except Exception as e:
+                output = f"[模拟输出生成失败: {e}]"
+
+            # 截图
+            try:
+                screenshot_path = render_screenshot(
+                    command=command,
+                    output=output,
+                    user=user,
+                    host=host,
+                    output_dir=task_dir,
+                )
+                screenshots.append(screenshot_path)
+            except Exception as e:
+                screenshots.append("")
+                output += f"\n[截图失败: {e}]"
+
+            results.append({
+                "step": step["step"],
+                "title": step["title"],
+                "command": command,
+                "output": output,
+            })
+
+        # 组装 Word 文档
+        docx_filename = f"lab_report_{task_id}.docx"
+        docx_path = os.path.join(OUTPUT_DIR, docx_filename)
+
+        build_docx(
+            steps=results,
+            screenshots=screenshots,
+            user=user,
+            host=host,
+            output_path=docx_path,
+        )
+
+        return jsonify({
+            "success": True,
+            "filename": docx_filename,
+            "steps_count": len(steps),
+            "download_url": f"/download/{docx_filename}",
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/generate_md", methods=["POST"])
+def generate_md():
+    """接收 MD 文件，直接使用 MD 中的命令和输出生成文档（不调用 DeepSeek）"""
+    try:
+        # 获取参数
+        user = request.form.get("user", "root").strip() or "root"
+        host = request.form.get("host", "server").strip() or "server"
+
+        # 获取上传的文件
+        if "md_file" not in request.files:
+            return jsonify({"error": "请上传 MD 文件"}), 400
+
+        file = request.files["md_file"]
+        if file.filename == "":
+            return jsonify({"error": "未选择文件"}), 400
+
+        # 校验文件扩展名
+        if not file.filename.lower().endswith(".md"):
+            return jsonify({"error": "只接受 .md 格式文件"}), 400
+
+        # 读取文件内容
+        content = file.read().decode("utf-8", errors="replace")
+
+        # 解析 MD 步骤
+        steps = parse_md_steps(content)
+        if not steps:
+            return jsonify({"error": "未解析到有效步骤，请检查 MD 格式是否符合规范"}), 400
+
+        # 创建本次任务目录
+        task_id = uuid.uuid4().hex[:8]
+        task_dir = os.path.join(OUTPUT_DIR, task_id)
+        os.makedirs(task_dir, exist_ok=True)
+
+        # 逐条生成截图（使用 MD 中自带的输出，不调用 DeepSeek）
+        screenshots = []
+        results = []
+
+        for i, step in enumerate(steps):
+            command = step["command"]
+            output = step.get("output", "")
+
+            # 截图
+            try:
+                screenshot_path = render_screenshot(
+                    command=command,
+                    output=output,
+                    user=user,
+                    host=host,
+                    output_dir=task_dir,
+                )
+                screenshots.append(screenshot_path)
+            except Exception as e:
+                screenshots.append("")
+                output += f"\n[截图失败: {e}]"
+
+            results.append({
+                "step": step["step"],
+                "title": step["title"],
+                "command": command,
+                "output": output,
+            })
+
+        # 组装 Word 文档
+        docx_filename = f"lab_report_{task_id}.docx"
+        docx_path = os.path.join(OUTPUT_DIR, docx_filename)
+
+        build_docx(
+            steps=results,
+            screenshots=screenshots,
+            user=user,
+            host=host,
+            output_path=docx_path,
+        )
+
+        return jsonify({
+            "success": True,
+            "filename": docx_filename,
+            "steps_count": len(steps),
+            "download_url": f"/download/{docx_filename}",
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/download/<filename>")
+def download(filename):
+    """下载生成的文件"""
+    filepath = os.path.join(OUTPUT_DIR, filename)
+    if not os.path.exists(filepath):
+        return jsonify({"error": "文件不存在"}), 404
+    return send_file(filepath, as_attachment=True, download_name=filename)
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)

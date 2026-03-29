@@ -26,16 +26,6 @@
                 <div class="hint">支持 .txt 和 .md 格式，AI 将自动生成命令输出</div>
             </div>
 
-            <!-- DeepSeek API 密钥管理 -->
-            <div class="form-group" id="apiKeyGroup">
-                <label for="apiKey">🔑 DeepSeek API 密钥</label>
-                <div class="api-key-container">
-                    <input type="password" id="apiKey" name="api_key" placeholder="请输入 DeepSeek API 密钥">
-                    <button type="button" id="releaseApiBtn" class="release-btn hidden">🔓 释放API</button>
-                </div>
-                <div class="hint" id="apiKeyStatus">未配置 API 密钥</div>
-            </div>
-
             <!-- MD 模式文件上传 -->
             <div class="form-group hidden" id="mdFileGroup">
                 <label for="mdFile">📝 MD 文件（固定格式）</label>
@@ -127,57 +117,6 @@
         // 当前模式
         let currentMode = 'deepseek';
 
-        // API 密钥管理
-        function loadApiKey() {
-            const savedApiKey = localStorage.getItem('deepseekApiKey');
-            const apiKeyInput = document.getElementById('apiKey');
-            const releaseBtn = document.getElementById('releaseApiBtn');
-            const status = document.getElementById('apiKeyStatus');
-
-            if (savedApiKey) {
-                // 显示部分掩码的 API 密钥
-                const maskedKey = savedApiKey.substring(0, 4) + '••••••••' + savedApiKey.substring(savedApiKey.length - 4);
-                apiKeyInput.value = maskedKey;
-                apiKeyInput.disabled = true;
-                releaseBtn.classList.remove('hidden');
-                status.textContent = '已配置 API 密钥';
-                status.classList.add('configured');
-            } else {
-                apiKeyInput.value = '';
-                apiKeyInput.disabled = false;
-                releaseBtn.classList.add('hidden');
-                status.textContent = '未配置 API 密钥';
-                status.classList.remove('configured');
-            }
-        }
-
-        // 释放 API 密钥
-        function releaseApiKey() {
-            if (confirm('确定要释放当前的 API 密钥吗？')) {
-                localStorage.removeItem('deepseekApiKey');
-                loadApiKey();
-            }
-        }
-
-        // 保存 API 密钥
-        function saveApiKey() {
-            const apiKeyInput = document.getElementById('apiKey');
-            const apiKey = apiKeyInput.value.trim();
-
-            if (apiKey) {
-                // 验证 API 密钥格式（简单验证）
-                if (apiKey.length < 20) {
-                    alert('API 密钥长度不正确，请检查输入');
-                    return false;
-                }
-                
-                localStorage.setItem('deepseekApiKey', apiKey);
-                loadApiKey();
-                return true;
-            }
-            return false;
-        }
-
         // 模式切换
         function switchMode(mode) {
             currentMode = mode;
@@ -187,7 +126,6 @@
             const mdBtn = document.getElementById('modeMd');
             const deepseekFile = document.getElementById('deepseekFileGroup');
             const mdFile = document.getElementById('mdFileGroup');
-            const apiKeyGroup = document.getElementById('apiKeyGroup');
             const promptSection = document.getElementById('promptSection');
             const fileInput = document.getElementById('file');
             const mdFileInput = document.getElementById('mdFile');
@@ -197,7 +135,6 @@
                 deepseekBtn.classList.add('active');
                 mdBtn.classList.remove('active');
                 deepseekFile.classList.remove('hidden');
-                apiKeyGroup.classList.remove('hidden');
                 mdFile.classList.add('hidden');
                 promptSection.classList.add('hidden');
                 fileInput.setAttribute('required', '');
@@ -207,7 +144,6 @@
                 deepseekBtn.classList.remove('active');
                 mdBtn.classList.add('active');
                 deepseekFile.classList.add('hidden');
-                apiKeyGroup.classList.add('hidden');
                 mdFile.classList.remove('hidden');
                 promptSection.classList.remove('hidden');
                 fileInput.removeAttribute('required');
@@ -269,25 +205,6 @@
                     return;
                 }
                 formData.append('file', fileInput.files[0]);
-
-                // 检查 API 密钥
-                const savedApiKey = localStorage.getItem('deepseekApiKey');
-                if (!savedApiKey) {
-                    // 如果没有保存的 API 密钥，尝试从输入框获取
-                    const apiKeyInput = document.getElementById('apiKey');
-                    const apiKey = apiKeyInput.value.trim();
-                    if (!apiKey) {
-                        error.classList.remove('hidden');
-                        error.textContent = '❌ 请输入 DeepSeek API 密钥';
-                        return;
-                    }
-                    // 验证并保存 API 密钥
-                    if (!saveApiKey()) {
-                        return;
-                    }
-                }
-                // 添加 API 密钥到表单
-                formData.append('api_key', localStorage.getItem('deepseekApiKey'));
             } else {
                 const mdFileInput = document.getElementById('mdFile');
                 if (!mdFileInput.files.length) {
@@ -341,13 +258,6 @@
                 submitBtn.disabled = false;
                 loading.classList.add('hidden');
             }
-        });
-
-        // 页面加载时加载 API 密钥
-        window.addEventListener('DOMContentLoaded', function() {
-            loadApiKey();
-            // 添加释放按钮事件监听器
-            document.getElementById('releaseApiBtn').addEventListener('click', releaseApiKey);
         });
     </script>
 </body>

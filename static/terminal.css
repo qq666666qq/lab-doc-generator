@@ -55,6 +55,7 @@ h1 {
 }
 
 input[type="text"],
+input[type="password"],
 input[type="file"] {
     width: 100%;
     padding: 10px 14px;
@@ -67,6 +68,7 @@ input[type="file"] {
 }
 
 input[type="text"]:focus,
+input[type="password"]:focus,
 input[type="file"]:focus {
     outline: none;
     border-color: #27c93f;
@@ -191,4 +193,129 @@ button[type="submit"]:disabled {
 /* 隐藏 */
 .hidden {
     display: none !important;
+}
+
+/* 模式切换 */
+.mode-switch {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 14px 16px;
+    background: #1a1a1a;
+    border: 2px solid #333;
+    border-radius: 8px;
+    color: #888;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.mode-btn:hover {
+    border-color: #555;
+    color: #ccc;
+}
+
+.mode-btn.active {
+    border-color: #27c93f;
+    color: #27c93f;
+    background: #1a2a1a;
+}
+
+/* 提示词模板 */
+.prompt-template {
+    margin-bottom: 20px;
+    border: 1px solid #333;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.prompt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: #1a1a1a;
+    font-size: 13px;
+    color: #aaa;
+}
+
+#promptText {
+    width: 100%;
+    min-height: 200px;
+    padding: 12px 16px;
+    background: #111;
+    border: none;
+    color: #ccc;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.6;
+    resize: vertical;
+}
+
+.copy-btn {
+    padding: 6px 14px;
+    background: #333;
+    color: #e0e0e0;
+    border: 1px solid #555;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.copy-btn:hover {
+    background: #444;
+}
+
+.copy-hint {
+    padding: 6px 16px;
+    background: #1a2a1a;
+    color: #27c93f;
+    font-size: 12px;
+    text-align: center;
+}
+
+/* API 密钥容器 */
+.api-key-container {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.api-key-container input[type="password"] {
+    flex: 1;
+}
+
+.release-btn {
+    padding: 10px 16px;
+    background: #ff5f56;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.release-btn:hover {
+    background: #ff4238;
+}
+
+/* API 密钥状态 */
+#apiKeyStatus {
+    margin-top: 4px;
+    font-size: 13px;
+}
+
+#apiKeyStatus.configured {
+    color: #27c93f;
+    font-weight: 500;
 }
